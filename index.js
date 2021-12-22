@@ -22,16 +22,16 @@ let connection = null
 let accessories = {}
 let apollo = null
 const typeDefs = gql `
-  
+
   type Characteristic {
     type: String
     perms: [String]
     description: String
-    
+
     iid: String
     value: String
   }
-  
+
   type CharacteristicValue {
     aid: String
     iid: String
@@ -48,7 +48,7 @@ const typeDefs = gql `
     aid: String
     services: [Service]
   }
-  
+
   type Query {
     accessories: [Accessory]
     characteristic(aid: String, iid: String): CharacteristicValue!
@@ -56,6 +56,10 @@ const typeDefs = gql `
 
   type Subscription {
     characteristicChanged(aid: String, iid: String): CharacteristicValue
+  }
+
+  type Mutation {
+    characteristic(aid: String, iid: String, value: Int): Int
   }
 `
 
@@ -72,9 +76,9 @@ const resolvers = {
                         "Content-Type": "application/json"
                     }
                 })
-    
+
                 accessories = result.data.accessories
-    
+
                 return accessories
             }
 
@@ -99,7 +103,7 @@ const resolvers = {
         }
     },
     Subscription: {
-        characteristicChanged: {
+      characteristicChanged: {
             subscribe: withFilter(
                 () => pubsub.asyncIterator('CHARACTERISTIC_CHANGED'),
                 (payload, variables, context, info) => {
@@ -115,8 +119,27 @@ const resolvers = {
             ),
         },
     },
-}
+    Mutation: {
+      characteristic: async (obj, {aid, iid, value}, context, info) => {
+          // if((options.token && context.token === options.token) || context.token === bridgeConfig.pin)
+          if(context.token === options.token)
+          {
+            const config = {
+              headers: {
+                  "Authorization": bridgeConfig.pin,
+                  "Content-Type": "application/json"
+              }
+            }
 
+            const result = await axios.put(`http://127.0.0.1:${bridgeConfig.port}/characteristics`, {"characteristics": [{"aid": aid, "iid": iid, "value": value }]}, config);
+
+            return result.status
+          }
+
+          return 500
+      }
+    },
+}
 
 module.exports = (homebridge) => {
     homebridge.on('shutdown', () => {
@@ -131,7 +154,7 @@ module.exports = (homebridge) => {
             let configFile = null
             for (let i = 0; i < process.argv.length; i++) {
                 const arg = process.argv[i]
-    
+
                 if (arg === '-U' || arg === '-user-storage-path') {
                     if (process.argv[i + 1]) {
                         configFile = path.resolve(process.env.PWD, process.argv[i + 1]) + '/config.json'
@@ -139,19 +162,19 @@ module.exports = (homebridge) => {
                     }
                 }
             }
-    
+
             if (configFile === null) {
                 configFile = os.homedir() + '/config.json'
             }
-    
+
             logger('Homebridge config file', configFile)
-    
-    
-    
-    
+
+
+
+
             if (fs.existsSync(configFile)) {
                 const homebridgeConfig = require(configFile)
-    
+
                 bridgeConfig = homebridgeConfig.bridge
 
                 options = homebridgeConfig.api
@@ -170,14 +193,14 @@ module.exports = (homebridge) => {
                             return connection.context;
                         } else {
                             const token = req.headers.authorization || "";
-        
+
                             return {
                                 token
                             };
                         }
                     },
                 });
-    
+
                 axios({
                     url: `http://127.0.0.1:${bridgeConfig.port}/accessories`,
                     headers: {
@@ -186,8 +209,8 @@ module.exports = (homebridge) => {
                     }
                 }).then(result => {
                     accessories = result.data.accessories
-    
-    
+
+
                     server.listen({
                         port: options.port
                     }).then(({
@@ -197,20 +220,20 @@ module.exports = (homebridge) => {
                         apollo = server
                         logger(`API Server ready at ${url}`);
                     });
-    
+
                     connection = net.createConnection(bridgeConfig.port, '127.0.0.1')
-    
+
                     connection.setKeepAlive(true)
-        
-        
+
+
                     connection.on('error', e => {
                         logger('Homebridge socket error', e)
                     })
-        
+
                     connection.on('connect', () => {
                         logger('Homebridge socket connected')
                     })
-        
+
                     connection.on('data', data => {
                         const body = data + ''
                         if(body.indexOf('EVENT/') === 0)
@@ -218,9 +241,9 @@ module.exports = (homebridge) => {
                             const firstPosition = body.indexOf('{')
                             const lastPosition = body.lastIndexOf('}')
                             const characteristics = JSON.parse(body.substr(firstPosition, lastPosition - firstPosition + 1)).characteristics
-        
+
                             logger("Got characteristic event", characteristics)
-    
+
                             for(let characteristic of characteristics)
                             {
                                 pubsub.publish('CHARACTERISTIC_CHANGED', {
@@ -229,11 +252,11 @@ module.exports = (homebridge) => {
                             }
                         }
                     })
-        
+
                     let body = {
                         characteristics: []
                     }
-        
+
                     for(let accessory of accessories) {
                         for(let service of accessory.services) {
                             for(let characteristic of service.characteristics) {
@@ -248,9 +271,9 @@ module.exports = (homebridge) => {
                             }
                         }
                     }
-        
+
                     body = Buffer.from(JSON.stringify(body))
-        
+
                     const data = Buffer.concat([
                         Buffer.from(`PUT /characteristics HTTP/1.1\r\n`),
                         Buffer.from(`Authorization: ${bridgeConfig.pin}\r\n`),
@@ -258,15 +281,15 @@ module.exports = (homebridge) => {
                         Buffer.from(`Content-Length: ${body.length}\r\n\r\n`),
                         body,
                     ])
-        
+
                     connection.write(data)
                 })
-    
-    
-                
+
+
+
             }
         }, 5000)
-        
+
 
     })
 
