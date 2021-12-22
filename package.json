@@ -1,11 +1,11 @@
 {
-  "name": "homebridge-api",
+  "name": "homebridge-api-2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/louros/homebridge-api.git"
   },
   "author": "MartinPham",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Homebridge API",
   "license": "ISC",
   "keywords": [
