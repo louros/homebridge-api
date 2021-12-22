@@ -2,7 +2,7 @@
   "name": "homebridge-api",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/martinpham/homebridge-api.git"
+    "url": "git+https://github.com/louros/homebridge-api.git"
   },
   "author": "MartinPham",
   "version": "1.0.2",
