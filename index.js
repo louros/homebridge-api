@@ -59,7 +59,7 @@ const typeDefs = gql `
   }
 
   type Mutation {
-    characteristic(aid: String, iid: String, value: Int): Int
+    characteristic(aid: Int, iid: Int, value: Int): Int
   }
 `
 
@@ -121,6 +121,7 @@ const resolvers = {
     },
     Mutation: {
       characteristic: async (obj, {aid, iid, value}, context, info) => {
+        logger(`Mutate characteristic`);
           // if((options.token && context.token === options.token) || context.token === bridgeConfig.pin)
           if(context.token === options.token)
           {
@@ -140,6 +141,7 @@ const resolvers = {
       }
     },
 }
+
 
 module.exports = (homebridge) => {
     homebridge.on('shutdown', () => {
